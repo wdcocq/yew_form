@@ -1,9 +1,11 @@
-use wasm_bindgen::JsCast;
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::Event;
+use std::rc::Rc;
+
 use web_sys::HtmlSelectElement;
 use web_sys::InputEvent;
-use yew::{classes, html, Callback, Children, Classes, Component, Context, Html, Properties};
+use yew::html::ChildrenRenderer;
+use yew::prelude::*;
+use yew::virtual_dom::VChild;
+use yew::virtual_dom::VText;
 
 use crate::form::Form;
 use crate::Model;
@@ -12,124 +14,143 @@ pub enum SelectMessage {
     OnInput(InputEvent),
 }
 
+#[derive(Clone, PartialEq)]
+pub enum Options {
+    Controlled(VChild<SelectOption>),
+    Uncontrolled(Html),
+}
+
+impl From<VChild<SelectOption>> for Options {
+    fn from(child: VChild<SelectOption>) -> Self {
+        Options::Controlled(child)
+    }
+}
+
+impl From<Html> for Options {
+    fn from(child: Html) -> Self {
+        Options::Uncontrolled(child)
+    }
+}
+
+impl Into<Html> for Options {
+    fn into(self) -> Html {
+        match self {
+            Options::Controlled(child) => child.into(),
+            Options::Uncontrolled(child) => child.into(),
+        }
+    }
+}
+
 #[derive(Properties, PartialEq, Clone)]
-pub struct SelectPropeties<T: Model> {
+pub struct SelectProps<T: Model> {
     pub form: Form<T>,
-    pub field_name: String,
-    #[prop_or_else(|| "off".to_owned() )]
-    pub autocomplete: String,
-    #[prop_or_else(|| false )]
+    pub field_name: AttrValue,
+    pub children: ChildrenRenderer<Options>,
+    #[prop_or_default]
+    pub autocomplete: bool,
+    #[prop_or_default]
     pub disabled: bool,
-    #[prop_or_else(|| false )]
+    #[prop_or_default]
     pub multiple: bool,
     #[prop_or_default]
-    pub class: Classes,
+    pub classes: Classes,
     #[prop_or_default]
-    pub class_valid: Classes,
+    pub classes_valid: Classes,
     #[prop_or_default]
-    pub class_invalid: Classes,
-    pub children: Children,
-    #[prop_or_else(Callback::noop)]
+    pub classes_invalid: Classes,
+    #[prop_or_default]
     pub oninput: Callback<InputEvent>,
 }
 
-pub struct Select<T: Model> {
-    pub form: Form<T>,
-    pub field_name: String,
-    pub class: Classes,
-    pub class_valid: Classes,
-    pub class_invalid: Classes,
-}
+#[function_component(Select)]
+pub fn select<T: Model>(
+    SelectProps {
+        form,
+        field_name,
+        autocomplete,
+        disabled,
+        multiple,
+        classes,
+        classes_valid,
+        classes_invalid,
+        children,
+        oninput,
+    }: &SelectProps<T>,
+) -> Html {
+    let field = form.field(&field_name);
+    let classes = classes!(
+        classes.clone(),
+        field.dirty.then(|| match field.valid {
+            true => classes_valid.clone(),
+            false => classes_invalid.clone(),
+        })
+    );
+    let selected = &field.field_value;
 
-impl<T: Model> Select<T> {
-    pub fn field_name(&self) -> &str {
-        &self.field_name
-    }
-
-    pub fn class(&self) -> Classes {
-        let s = self.form.state();
-        let field = s.field(&self.field_name);
-
-        if field.dirty && field.valid {
-            classes!(self.class.clone(), self.class_valid.clone())
-        } else if field.dirty {
-            classes!(self.class.clone(), self.class_invalid.clone())
-        } else {
-            self.class.to_owned()
-        }
-    }
-
-    pub fn message(&self) -> String {
-        self.form.field_message(self.field_name())
-    }
-
-    pub fn valid(&self) -> bool {
-        self.form.field_valid(self.field_name())
-    }
-
-    pub fn dirty(&self) -> bool {
-        self.form.state().field(self.field_name()).dirty
-    }
-
-    pub fn set_field(&mut self, field_name: &str, value: &str) {
-        self.form.set_field_value(field_name, value)
-    }
-
-    pub fn get_select_value(&self, e: InputEvent) -> String {
-        let event: Event = e.dyn_into().unwrap_throw();
-        let event_target = event.target().unwrap_throw();
-        let target: HtmlSelectElement = event_target.dyn_into().unwrap_throw();
-        target.value()
-    }
-}
-
-impl<T: Model> Component for Select<T> {
-    type Message = SelectMessage;
-    type Properties = SelectPropeties<T>;
-
-    fn create(ctx: &Context<Self>) -> Self {
-        Self {
-            form: ctx.props().form.clone(),
-            field_name: String::from(&ctx.props().field_name),
-            class: ctx.props().class.clone(),
-            class_valid: ctx.props().class_valid.clone(),
-            class_invalid: ctx.props().class_invalid.clone(),
-        }
-    }
-
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            SelectMessage::OnInput(event) => {
-                let value = self.get_select_value(event.clone());
-                let mut state = self.form.state_mut();
-                state.set_field_value(&self.field_name, &value);
-                state.update_validation_field(&self.field_name);
-                drop(state);
-                ctx.props().oninput.emit(event);
-                true
+    let oninput = {
+        let form = form.clone();
+        let field_name = field_name.clone();
+        oninput.reform(move |e: InputEvent| {
+            if let Some(input) = e.target_dyn_into::<HtmlSelectElement>() {
+                let value = input.value();
+                let mut field = form.field_mut(&field_name);
+                field.set_value(value);
             }
-        }
+
+            e
+        })
+    };
+
+    html! {
+        <select
+            id={field_name}
+            name={field_name}
+            autocomplete={if *autocomplete {"on"} else {"off"}}
+            disabled={*disabled}
+            multiple={*multiple}
+            class={classes}
+            {oninput}
+        >
+            { for children.iter().map(|option| {
+                match option {
+                    Options::Controlled(mut option) => {
+                        let mut props = Rc::make_mut(&mut option.props);
+                        props.selected = props.value == *selected;
+                        option.into()
+                    },
+                    Options::Uncontrolled(option) => {
+                        option
+                    }
+                }
+            })}
+        </select>
     }
+}
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        true
-    }
+#[derive(Debug, Clone, PartialEq, Properties)]
+pub struct SelectOptionProps {
+    pub value: AttrValue,
+    #[prop_or_default]
+    pub children: Option<ChildrenRenderer<VText>>,
+    #[prop_or_default]
+    selected: bool,
+}
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let props = ctx.props();
-
-        html! {
-            <select
-                id={self.field_name.clone()}
-                name={self.field_name.clone()}
-                autocomplete={props.autocomplete.clone()}
-                disabled={props.disabled}
-                multiple={props.multiple}
-                class={self.class().to_string()}
-                oninput={ctx.link().callback(SelectMessage::OnInput)}
-            >
-            { for props.children.clone().iter() }
-            </select>
-        }
+#[function_component(SelectOption)]
+pub fn select_item(
+    SelectOptionProps {
+        value,
+        children,
+        selected,
+    }: &SelectOptionProps,
+) -> Html {
+    html! {
+        <option selected={*selected} {value}>
+            if let Some(children) = children {
+                {children.clone()}
+            } else {
+                {value}
+            }
+        </option>
     }
 }

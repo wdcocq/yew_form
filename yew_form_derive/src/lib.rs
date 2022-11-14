@@ -52,9 +52,9 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
         }
 
         impl #impl_generics ::yew_form::model::FormValue for #struct_name #ty_generics #where_clause {
-            fn fields(&self, prefix: &str, fields: &mut Vec<String>) {
+            fn fields(&self, prefix: &str, fields: &mut Vec<::yew::virtual_dom::AttrValue>) {
                 let field_prefix = if prefix == "" {
-                    String::new()
+                    std::default::Default::default()
                 } else {
                     format!("{}.", prefix)
                 };
@@ -65,7 +65,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 )*
             }
 
-            fn value(&self, field_path: &str) -> String {
+            fn value(&self, field_path: &str) -> ::yew::virtual_dom::AttrValue {
                 let (field_name, suffix) = ::yew_form::split_field_path(field_path);
 
                 match field_name {
@@ -76,7 +76,7 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), String> {
+            fn set_value(&mut self, field_path: &str, value: &str) -> ::std::result::Result<(), &'static str> {
                 let (field_name, suffix) = ::yew_form::split_field_path(field_path);
 
                 match field_name {

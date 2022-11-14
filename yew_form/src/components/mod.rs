@@ -6,5 +6,5 @@ pub mod textarea;
 
 pub use checkbox::CheckBox;
 pub use file::File;
-pub use select::Select;
+pub use select::{Select, SelectOption};
 pub use textarea::TextArea;

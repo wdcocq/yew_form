@@ -1,10 +1,13 @@
+use std::collections::HashMap;
+
 use crate::form_field::FormField;
 use crate::Model;
 use validator::{ValidationErrors, ValidationErrorsKind};
+use yew::AttrValue;
 
 pub struct FormState<T: Model> {
     pub(crate) model: T,
-    fields: Vec<FormField>,
+    fields: HashMap<AttrValue, FormField>,
 }
 
 impl<T: Model> FormState<T> {
@@ -16,8 +19,9 @@ impl<T: Model> FormState<T> {
         let form = FormState {
             model: model.clone(),
             fields: fields
-                .iter()
-                .map(|f| FormField::new(f, &model.value(f)))
+                .into_iter()
+                .map(|f| (model.value(&f), f))
+                .map(|(v, f)| (f.clone(), FormField::new(f, v)))
                 .collect(),
         };
 
@@ -34,47 +38,49 @@ impl<T: Model> FormState<T> {
 
     pub(crate) fn field(&self, name: &str) -> &FormField {
         self.fields
-            .iter()
-            .find(|&f| f.field_name == name)
+            .get(name)
             .expect(&format!("Field {} does not exist", name))
     }
 
     pub(crate) fn field_mut(&mut self, name: &str) -> &mut FormField {
         self.fields
-            .iter_mut()
-            .find(|f| f.field_name == name)
+            .get_mut(name)
             .expect(&format!("Field {} does not exist", name))
     }
 
-    pub fn field_value(&self, field_name: &str) -> &str {
+    pub fn field_value(&self, field_name: &str) -> &AttrValue {
         let field = self.field(field_name);
 
         &field.field_value
     }
 
-    pub fn set_field_value(&mut self, field_path: &str, field_value: &str) {
-        if self.field_value(field_path) != field_value {
-            let result = self.model.set_value(field_path, field_value);
+    pub fn set_field_value<V>(&mut self, field_path: &str, field_value: V)
+    where
+        V: Into<AttrValue>,
+    {
+        let field_value = field_value.into();
+        if self.field_value(field_path) != &field_value {
+            let result = self.model.set_value(field_path, &field_value);
 
             let field = self.field_mut(field_path);
-            field.field_value = String::from(field_value);
+            field.field_value = field_value.into();
             field.dirty = true;
 
             match result {
                 Ok(()) => {
                     field.valid = true;
-                    field.message = String::new();
+                    field.message = Default::default();
                 }
                 Err(e) => {
                     field.valid = false;
-                    field.message = String::from(e);
+                    field.message = e.into();
                 }
             }
         }
     }
 
     pub fn valid(&self) -> bool {
-        self.fields.iter().all(|f| f.valid)
+        self.fields.values().all(|f| f.valid)
     }
 
     pub fn field_valid(&self, field_path: &str) -> bool {
@@ -88,7 +94,7 @@ impl<T: Model> FormState<T> {
     /// Marks all the fields as `dirty` and perform validation on the model
     /// Returns `true` if the model passes validation
     pub fn validate(&mut self) -> bool {
-        self.fields.iter_mut().for_each(|f| {
+        self.fields.values_mut().for_each(|f| {
             f.valid = true;
             f.dirty = true;
         });
@@ -117,9 +123,9 @@ impl<T: Model> FormState<T> {
     }
 
     fn clear_errors(&mut self) {
-        for field in &mut self.fields {
-            field.message = "".to_string();
-        }
+        self.fields.values_mut().for_each(|f| {
+            f.message = Default::default();
+        });
     }
 
     fn add_errors(
@@ -156,10 +162,13 @@ impl<T: Model> FormState<T> {
 
                     field.valid = false;
 
-                    field.message = if let Some(message) = errors[0].message.as_ref() {
-                        message.to_string()
+                    field.message = if let Some(message) = &errors[0].message {
+                        match message {
+                            std::borrow::Cow::Borrowed(msg) => (*msg).into(),
+                            std::borrow::Cow::Owned(msg) => msg.to_owned().into(),
+                        }
                     } else {
-                        "Error".to_string()
+                        "Error".into()
                     }
                 }
             };

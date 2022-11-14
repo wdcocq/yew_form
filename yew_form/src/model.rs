@@ -1,13 +1,15 @@
+use std::convert::AsRef;
 use std::str::FromStr;
 use validator::Validate;
+use yew::AttrValue;
 
 pub trait FormValue {
-    fn fields(&self, prefix: &str, fields: &mut Vec<String>) {
+    fn fields(&self, prefix: &str, fields: &mut Vec<AttrValue>) {
         // By default, announce the value to be a scalar
-        fields.push(String::from(prefix));
+        fields.push(prefix.to_owned().into());
     }
-    fn value(&self, field_path: &str) -> String;
-    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), String>;
+    fn value(&self, field_path: &str) -> AttrValue;
+    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str>;
 }
 
 pub trait Model: FormValue + Validate + PartialEq + Clone + 'static {}
@@ -21,20 +23,20 @@ pub fn split_field_path(field_path: &str) -> (&str, &str) {
 }
 
 impl<T: ToString + FromStr> FormValue for T {
-    fn value(&self, field_path: &str) -> String {
+    fn value(&self, field_path: &str) -> AttrValue {
         debug_assert!(field_path == "");
 
-        self.to_string()
+        self.to_string().into()
     }
 
-    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), String> {
+    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str> {
         debug_assert!(field_path == "");
 
         if let Ok(v) = value.parse::<T>() {
             *self = v;
             Ok(())
         } else {
-            Err(String::from("Could not convert"))
+            Err("Could not convert")
         }
     }
 }

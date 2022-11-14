@@ -1,0 +1,2 @@
+[workspace]
+members = ["yew_form", "yew_form_derive"]
