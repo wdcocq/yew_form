@@ -7,6 +7,9 @@ use yew::prelude::*;
 use yew::virtual_dom::VChild;
 use yew::virtual_dom::VText;
 
+#[cfg(feature = "ybc")]
+use ybc;
+
 use crate::form::Form;
 use crate::Model;
 
@@ -59,7 +62,7 @@ pub struct SelectProps<T: Model> {
     #[prop_or_default]
     pub classes_invalid: Classes,
     #[prop_or_default]
-    pub oninput: Callback<InputEvent>,
+    pub onchange: Callback<Event>,
 }
 
 #[function_component(Select)]
@@ -74,7 +77,7 @@ pub fn select<T: Model>(
         classes_valid,
         classes_invalid,
         children,
-        oninput,
+        onchange,
     }: &SelectProps<T>,
 ) -> Html {
     let field = form.field(&field_name);
@@ -87,10 +90,10 @@ pub fn select<T: Model>(
     );
     let selected = &field.field_value;
 
-    let oninput = {
+    let onchange = {
         let form = form.clone();
         let field_name = field_name.clone();
-        oninput.reform(move |e: InputEvent| {
+        onchange.reform(move |e: Event| {
             if let Some(input) = e.target_dyn_into::<HtmlSelectElement>() {
                 let value = input.value();
                 let mut field = form.field_mut(&field_name);
@@ -101,6 +104,29 @@ pub fn select<T: Model>(
         })
     };
 
+    #[cfg(feature = "ybc")]
+    html! {
+       <ybc::Select
+            name={field_name}
+            {classes}
+            disabled={*disabled}
+            update={onchange}>
+            { for children.iter().map(|option| {
+                match option {
+                    Options::Controlled(mut option) => {
+                        let mut props = Rc::make_mut(&mut option.props);
+                        props.selected = props.value == *selected;
+                        option.into()
+                    },
+                    Options::Uncontrolled(option) => {
+                        option
+                    }
+                }
+            })}
+       </ybc::Select>
+    }
+
+    #[cfg(not(feature = "ybc"))]
     html! {
         <select
             id={field_name}
@@ -109,7 +135,7 @@ pub fn select<T: Model>(
             disabled={*disabled}
             multiple={*multiple}
             class={classes}
-            {oninput}
+            {onchange}
         >
             { for children.iter().map(|option| {
                 match option {

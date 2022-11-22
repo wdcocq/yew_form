@@ -15,6 +15,8 @@ validator = { version = "0.15", features=["derive"] }
 yew = {git = "https://github.com/yewstack/yew"}
 gloo-console = "0.2"
 yew_form_derive = {path = "../yew_form_derive"}
+ybc = {git = "https://github.com/wdcocq/ybc", optional = true, branch = "yew-next"}
+strum = { version = "0.24.1", features = ["derive"] }
 
 [dependencies.web-sys]
 version = "0.3"
@@ -23,3 +25,7 @@ features = [
 "HtmlSelectElement",
 "HtmlTextAreaElement"
 ]
+
+[features]
+default-features = []
+ybc = ["dep:ybc"]
