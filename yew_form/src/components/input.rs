@@ -22,6 +22,8 @@ pub enum InputType {
     Date,
 }
 
+impl ImplicitClone for InputType {}
+
 impl IntoPropValue<Option<AttrValue>> for InputType {
     fn into_prop_value(self) -> Option<AttrValue> {
         <AttrValue as From<&'static str>>::from(self.into()).into()
@@ -93,7 +95,7 @@ pub fn input<T: Model>(
 
         oninput.reform(move |e: InputEvent| {
             if let Some(input) = e.target_dyn_into::<HtmlInputElement>() {
-                form.field_mut(&field_name).set_value(input.value());
+                form.set_value(&field_name, input.value());
             }
             e
         })
@@ -109,7 +111,7 @@ pub fn input<T: Model>(
                 r#type={input_type}
                 autocomplete={*autocomplete}
                 {placeholder}
-                value={field.value()}
+                value={&field.value}
                 update={oninput}
                 disabled={*disabled}
             />
@@ -129,7 +131,7 @@ pub fn input<T: Model>(
             type={*input_type}
             {autocomplete}
             {placeholder}
-            value={field.value()}
+            value={&field.value}
             {oninput}
             disabled={*disabled}
         />

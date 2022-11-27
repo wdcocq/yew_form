@@ -5,6 +5,7 @@ use crate::Model;
 use validator::{ValidationErrors, ValidationErrorsKind};
 use yew::AttrValue;
 
+#[derive(PartialEq)]
 pub struct FormState<T: Model> {
     pub(crate) model: T,
     fields: HashMap<AttrValue, FormField>,
@@ -42,45 +43,46 @@ impl<T: Model> FormState<T> {
             .expect(&format!("Field {} does not exist", name))
     }
 
-    pub(crate) fn field_mut(&mut self, name: &str) -> &mut FormField {
+    fn field_mut(&mut self, name: &str) -> &mut FormField {
         self.fields
             .get_mut(name)
             .expect(&format!("Field {} does not exist", name))
     }
 
-    pub fn field_value(&self, field_name: &str) -> &AttrValue {
-        let field = self.field(field_name);
-
-        &field.field_value
-    }
-
-    pub fn set_field_value<V>(&mut self, field_path: &str, field_value: V)
+    pub fn set_value<V>(&mut self, field_name: &str, value: V) -> bool
     where
-        V: Into<AttrValue>,
+        V: Into<AttrValue> + AsRef<str>,
     {
-        let field_value = field_value.into();
-        if self.field_value(field_path) != &field_value {
-            let result = self.model.set_value(field_path, &field_value);
+        if self.field(field_name).value == value.as_ref() {
+            return false;
+        }
 
-            let field = self.field_mut(field_path);
-            field.field_value = field_value.into();
-            field.dirty = true;
+        let value = value.into();
+        let result = self.model.set_value(field_name, &value);
 
-            match result {
-                Ok(()) => {
-                    field.valid = true;
-                    field.message = Default::default();
-                }
-                Err(e) => {
-                    field.valid = false;
-                    field.message = e.into();
-                }
+        let field = self.field_mut(field_name);
+        field.value = value;
+        field.dirty = true;
+
+        match result {
+            Ok(()) => {
+                self.update_validation_field(field_name);
+            }
+            Err(e) => {
+                field.valid = false;
+                field.message = e.into();
             }
         }
+
+        true
     }
 
     pub fn valid(&self) -> bool {
         self.fields.values().all(|f| f.valid)
+    }
+
+    pub fn dirty(&self) -> bool {
+        self.fields.values().any(|f| f.dirty)
     }
 
     pub fn field_valid(&self, field_path: &str) -> bool {
@@ -106,7 +108,7 @@ impl<T: Model> FormState<T> {
 
     pub(crate) fn update_validation(&mut self) {
         match self.model.validate() {
-            Ok(()) => self.clear_errors(),
+            Ok(()) => self.clear_errors(None),
             Err(errors) => {
                 self.add_errors("", None, &errors);
             }
@@ -114,18 +116,25 @@ impl<T: Model> FormState<T> {
     }
 
     pub(crate) fn update_validation_field(&mut self, field: &str) {
-        match self.model.validate() {
-            Ok(()) => self.clear_errors(),
-            Err(errors) => {
-                self.add_errors("", Some(field), &errors);
-            }
+        self.clear_errors(Some(field));
+        if let Err(errors) = self.model.validate() {
+            self.add_errors("", Some(field), &errors);
         }
     }
 
-    fn clear_errors(&mut self) {
-        self.fields.values_mut().for_each(|f| {
-            f.message = Default::default();
-        });
+    fn clear_errors(&mut self, field: Option<&str>) {
+        match field {
+            Some(field) => {
+                let field = self.field_mut(field);
+                field.valid = true;
+                field.message = Default::default();
+            }
+            None => {
+                self.fields.values_mut().for_each(|f| {
+                    f.message = Default::default();
+                });
+            }
+        }
     }
 
     fn add_errors(

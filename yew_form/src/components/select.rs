@@ -81,6 +81,7 @@ pub fn select<T: Model>(
     }: &SelectProps<T>,
 ) -> Html {
     let field = form.field(&field_name);
+    let selected = &field.value;
     let classes = classes!(
         classes.clone(),
         field.dirty.then(|| match field.valid {
@@ -88,16 +89,14 @@ pub fn select<T: Model>(
             false => classes_invalid.clone(),
         })
     );
-    let selected = &field.field_value;
 
     let onchange = {
         let form = form.clone();
         let field_name = field_name.clone();
+
         onchange.reform(move |e: Event| {
             if let Some(input) = e.target_dyn_into::<HtmlSelectElement>() {
-                let value = input.value();
-                let mut field = form.field_mut(&field_name);
-                field.set_value(value);
+                form.set_value(&field_name, input.value());
             }
 
             e

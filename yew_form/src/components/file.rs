@@ -56,9 +56,10 @@ pub fn file<T: Model>(
     let oninput = oninput.reform({
         let form = form.clone();
         let field_name = field_name.clone();
+
         move |e: InputEvent| {
             if let Some(input) = e.target_dyn_into::<HtmlInputElement>() {
-                form.field_mut(&field_name).set_value(input.value());
+                form.set_value(field_name, input.value());
             }
 
             e
@@ -75,6 +76,7 @@ pub fn file<T: Model>(
             multiple={*multiple}
             class={classes}
             {oninput}
+            {capture}
         />
     }
 }

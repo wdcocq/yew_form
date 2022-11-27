@@ -1,7 +1,3 @@
-use wasm_bindgen::JsCast;
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::Event;
-use web_sys::HtmlInputElement;
 use web_sys::HtmlTextAreaElement;
 use web_sys::InputEvent;
 
@@ -91,8 +87,8 @@ pub fn text_area<T: Model>(
         let field_name = field_name.clone();
 
         oninput.reform(move |e: InputEvent| {
-            if let Some(input) = e.target_dyn_into::<HtmlInputElement>() {
-                form.field_mut(&field_name).set_value(input.value());
+            if let Some(input) = e.target_dyn_into::<HtmlTextAreaElement>() {
+                form.set_value(&field_name, input.value());
             }
             e
         })

@@ -1,36 +1,42 @@
 use yew::AttrValue;
 
+#[derive(PartialEq)]
 pub struct FormField {
-    pub field_name: AttrValue,
-    pub field_value: AttrValue,
-    pub message: AttrValue,
-    pub dirty: bool,
-    pub valid: bool,
+    pub(crate) name: AttrValue,
+    pub(crate) value: AttrValue,
+    pub(crate) message: AttrValue,
+    pub(crate) dirty: bool,
+    pub(crate) valid: bool,
 }
 
 impl FormField {
-    pub fn new<T>(field_name: T, field_value: T) -> Self
-    where
-        T: Into<AttrValue>,
-    {
+    pub fn new(name: impl Into<AttrValue>, value: impl Into<AttrValue>) -> Self {
         FormField {
-            field_name: field_name.into(),
-            field_value: field_value.into(),
+            name: name.into(),
+            value: value.into(),
             message: Default::default(),
             dirty: false,
             valid: true,
         }
     }
 
-    pub fn value(&self) -> &AttrValue {
-        &self.field_value
-    }
-
-    pub fn set_value(&mut self, value: impl Into<AttrValue>) {
-        self.field_value = value.into();
-    }
-
     pub fn name(&self) -> &AttrValue {
-        &self.field_name
+        &self.name
+    }
+
+    pub fn value(&self) -> &AttrValue {
+        &self.value
+    }
+
+    pub fn message(&self) -> &AttrValue {
+        &self.message
+    }
+
+    pub fn dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn valid(&self) -> bool {
+        self.valid
     }
 }

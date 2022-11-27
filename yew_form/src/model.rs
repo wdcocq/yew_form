@@ -1,4 +1,3 @@
-use std::convert::AsRef;
 use std::str::FromStr;
 use validator::Validate;
 use yew::AttrValue;
