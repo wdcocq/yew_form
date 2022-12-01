@@ -48,7 +48,7 @@ pub fn file<T: Model>(
     let field = form.field(field_name);
     let classes = classes!(
         classes.clone(),
-        field.dirty.then(|| match field.valid {
+        field.dirty().then(|| match field.valid {
             true => classes_valid.clone(),
             false => classes_invalid.clone(),
         })
@@ -59,7 +59,7 @@ pub fn file<T: Model>(
 
         move |e: InputEvent| {
             if let Some(input) = e.target_dyn_into::<HtmlInputElement>() {
-                form.set_value(field_name, input.value());
+                form.set_value(&field_name, input.value());
             }
 
             e

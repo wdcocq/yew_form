@@ -11,3 +11,4 @@ yew_form_derive/Cargo.lock
 **/*.rs.bk
 
 /.idea/
+Cargo.lock

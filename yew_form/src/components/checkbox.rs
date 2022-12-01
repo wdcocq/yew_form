@@ -24,7 +24,7 @@ pub fn check_box<T: Model>(
         ontoggle,
     }: &CheckBoxProps<T>,
 ) -> Html {
-    let value = form.value(field_name) == "true";
+    let value = *form.value(field_name) == "true";
 
     let ontoggle = {
         let form = form.clone();

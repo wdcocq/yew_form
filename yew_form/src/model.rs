@@ -1,4 +1,9 @@
-use std::str::FromStr;
+use std::{
+    fmt::{Debug, Display},
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
+use strum::Display;
 use validator::Validate;
 use yew::AttrValue;
 
@@ -21,18 +26,119 @@ pub fn split_field_path(field_path: &str) -> (&str, &str) {
     }
 }
 
-impl<T: ToString + FromStr> FormValue for T {
+macro_rules! impl_form_value {
+    ($($t:ty),+) => {
+        $(
+            impl FormValue for $t {
+                fn value(&self, field_path: &str) -> AttrValue {
+                    debug_assert!(field_path == "");
+                    self.to_string().into()
+                }
+
+                fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str> {
+                    debug_assert!(field_path == "");
+
+                    if let Ok(v) = value.parse::<$t>() {
+                        *self = v;
+                        Ok(())
+                    } else {
+                        Err("Could not convert")
+                    }
+                }
+            }
+        )+
+    };
+}
+
+impl_form_value!(
+    bool, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64, String
+);
+
+#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FormValueWrapper<T>(pub T);
+
+impl<T> Display for FormValueWrapper<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T> FormValue for FormValueWrapper<T>
+where
+    T: ToString + FromStr,
+{
     fn value(&self, field_path: &str) -> AttrValue {
         debug_assert!(field_path == "");
-
-        self.to_string().into()
+        self.0.to_string().into()
     }
 
     fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str> {
         debug_assert!(field_path == "");
 
         if let Ok(v) = value.parse::<T>() {
-            *self = v;
+            self.0 = v;
+            Ok(())
+        } else {
+            Err("Could not convert")
+        }
+    }
+}
+
+impl FormValue for AttrValue {
+    fn value(&self, field_path: &str) -> AttrValue {
+        debug_assert!(field_path == "");
+        self.clone()
+    }
+
+    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str> {
+        debug_assert!(field_path == "");
+        *self = value.to_string().into();
+        Ok(())
+    }
+}
+
+impl<T> Deref for FormValueWrapper<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for FormValueWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<T> From<T> for FormValueWrapper<T> {
+    fn from(t: T) -> Self {
+        FormValueWrapper(t)
+    }
+}
+
+impl<T> FormValue for Option<T>
+where
+    T: FormValue + ToString + FromStr,
+{
+    fn value(&self, field_path: &str) -> AttrValue {
+        match self {
+            Some(value) => value.value(field_path),
+            None => Default::default(),
+        }
+    }
+
+    fn set_value(&mut self, field_path: &str, value: &str) -> Result<(), &'static str> {
+        debug_assert!(field_path == "");
+
+        if value.is_empty() {
+            *self = None;
+            Ok(())
+        } else if let Ok(v) = value.parse::<T>() {
+            *self = Some(v);
             Ok(())
         } else {
             Err("Could not convert")

@@ -18,24 +18,40 @@ impl<T: Model> FormState<T> {
         model.fields("", &mut fields);
 
         let form = FormState {
-            model: model.clone(),
             fields: fields
                 .into_iter()
                 .map(|f| (model.value(&f), f))
                 .map(|(v, f)| (f.clone(), FormField::new(f, v)))
                 .collect(),
+            model,
         };
 
         form
     }
 
-    pub fn model(&self) -> &T {
+    /// This updates the model but keeps the initial field values.
+    /// So differences are registered as dirty and are immediatly validated.
+    pub fn update(&mut self, model: &T) {
+        let mut fields = vec![];
+        let mut dirty = false;
+
+        model.fields("", &mut fields);
+        fields.into_iter().for_each(|f| {
+            dirty |= self.set_value(&f, model.value(&f));
+        });
+
+        if dirty {
+            self.model = model.clone();
+        }
+    }
+
+    pub(crate) fn model(&self) -> &T {
         &self.model
     }
 
-    pub fn model_mut(&mut self) -> &mut T {
-        &mut self.model
-    }
+    // fn model_mut(&mut self) -> &mut T {
+    //     &mut self.model
+    // }
 
     pub(crate) fn field(&self, name: &str) -> &FormField {
         self.fields
@@ -49,7 +65,7 @@ impl<T: Model> FormState<T> {
             .expect(&format!("Field {} does not exist", name))
     }
 
-    pub fn set_value<V>(&mut self, field_name: &str, value: V) -> bool
+    pub(crate) fn set_value<V>(&mut self, field_name: &str, value: V) -> bool
     where
         V: Into<AttrValue> + AsRef<str>,
     {
@@ -62,7 +78,6 @@ impl<T: Model> FormState<T> {
 
         let field = self.field_mut(field_name);
         field.value = value;
-        field.dirty = true;
 
         match result {
             Ok(()) => {
@@ -78,11 +93,11 @@ impl<T: Model> FormState<T> {
     }
 
     pub fn valid(&self) -> bool {
-        self.fields.values().all(|f| f.valid)
+        self.fields.values().all(FormField::valid)
     }
 
     pub fn dirty(&self) -> bool {
-        self.fields.values().any(|f| f.dirty)
+        self.fields.values().any(FormField::dirty)
     }
 
     pub fn field_valid(&self, field_path: &str) -> bool {
@@ -96,27 +111,21 @@ impl<T: Model> FormState<T> {
     /// Marks all the fields as `dirty` and perform validation on the model
     /// Returns `true` if the model passes validation
     pub fn validate(&mut self) -> bool {
-        self.fields.values_mut().for_each(|f| {
-            f.valid = true;
-            f.dirty = true;
-        });
-
         self.update_validation();
-
         self.valid()
     }
 
     pub(crate) fn update_validation(&mut self) {
-        match self.model.validate() {
-            Ok(()) => self.clear_errors(None),
-            Err(errors) => {
-                self.add_errors("", None, &errors);
-            }
+        self.clear_errors(None);
+
+        if let Err(errors) = self.model.validate() {
+            self.add_errors("", None, &errors);
         }
     }
 
     pub(crate) fn update_validation_field(&mut self, field: &str) {
         self.clear_errors(Some(field));
+
         if let Err(errors) = self.model.validate() {
             self.add_errors("", Some(field), &errors);
         }
@@ -131,6 +140,7 @@ impl<T: Model> FormState<T> {
             }
             None => {
                 self.fields.values_mut().for_each(|f| {
+                    f.valid = true;
                     f.message = Default::default();
                 });
             }

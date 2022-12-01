@@ -7,7 +7,7 @@ pub mod model;
 pub use components::*;
 
 pub use form::{use_form, use_form_with_deps, Form};
-pub use model::{split_field_path, Model};
+pub use model::{split_field_path, FormValueWrapper, Model};
 
 #[cfg(feature = "derive")]
 pub use yew_form_derive::Model;

@@ -4,18 +4,20 @@ use yew::AttrValue;
 pub struct FormField {
     pub(crate) name: AttrValue,
     pub(crate) value: AttrValue,
+    pub(crate) initial: AttrValue,
     pub(crate) message: AttrValue,
-    pub(crate) dirty: bool,
     pub(crate) valid: bool,
 }
 
 impl FormField {
     pub fn new(name: impl Into<AttrValue>, value: impl Into<AttrValue>) -> Self {
+        let value = value.into();
+
         FormField {
             name: name.into(),
-            value: value.into(),
+            value: value.clone(),
+            initial: value.clone(),
             message: Default::default(),
-            dirty: false,
             valid: true,
         }
     }
@@ -28,12 +30,16 @@ impl FormField {
         &self.value
     }
 
+    pub fn initial_value(&self) -> &AttrValue {
+        &self.initial
+    }
+
     pub fn message(&self) -> &AttrValue {
         &self.message
     }
 
     pub fn dirty(&self) -> bool {
-        self.dirty
+        self.initial != self.value
     }
 
     pub fn valid(&self) -> bool {

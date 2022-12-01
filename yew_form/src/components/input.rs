@@ -57,8 +57,10 @@ pub struct InputProps<T: Model> {
     pub disabled: bool,
     #[prop_or_default]
     pub classes: Classes,
+    /// Classes that are applied when the field is dirt and invalid
     #[prop_or_default]
     pub classes_invalid: Classes,
+    /// Classes that are applied when the field is dirty and valid
     #[prop_or_default]
     pub classes_valid: Classes,
     #[prop_or_default]
@@ -83,7 +85,7 @@ pub fn input<T: Model>(
     let field = form.field(field_name);
     let classes = classes!(
         classes.clone(),
-        field.dirty.then(|| match field.valid {
+        field.dirty().then(|| match field.valid {
             true => classes_valid.clone(),
             false => classes_invalid.clone(),
         })

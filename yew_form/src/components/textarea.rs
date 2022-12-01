@@ -76,7 +76,7 @@ pub fn text_area<T: Model>(
     let field = form.field(field_name);
     let classes = classes!(
         classes.clone(),
-        field.dirty.then(|| match field.valid {
+        field.dirty().then(|| match field.valid {
             true => classes_valid.clone(),
             false => classes_invalid.clone(),
         })

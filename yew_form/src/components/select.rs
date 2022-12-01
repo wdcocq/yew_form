@@ -84,7 +84,7 @@ pub fn select<T: Model>(
     let selected = &field.value;
     let classes = classes!(
         classes.clone(),
-        field.dirty.then(|| match field.valid {
+        field.dirty().then(|| match field.valid {
             true => classes_valid.clone(),
             false => classes_invalid.clone(),
         })
