@@ -16,7 +16,7 @@ yew = "0.20"
 gloo-console = "0.2"
 yew_form_derive = {path = "../yew_form_derive", optional = true}
 ybc = {git = "https://github.com/wdcocq/ybc", optional = true, branch = "yew-next"}
-strum = { version = "0.24.1", features = ["derive"] }
+strum = { version = "0.24", features = ["derive"] }
 
 [dependencies.web-sys]
 version = "0.3"

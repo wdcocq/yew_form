@@ -1,4 +1,7 @@
+use std::marker::PhantomData;
+
 use crate::form::Form;
+use crate::form::FormLike;
 use crate::Model;
 use web_sys::HtmlInputElement;
 use web_sys::InputEvent;
@@ -9,8 +12,8 @@ pub enum FileMessage {
 }
 
 #[derive(Properties, PartialEq, Clone)]
-pub struct FilePropeties<T: Model> {
-    pub form: Form<T>,
+pub struct FilePropeties<T: Model, F: FormLike<T>> {
+    pub form: F,
     pub field_name: AttrValue,
     #[prop_or_default]
     pub disabled: bool,
@@ -28,10 +31,12 @@ pub struct FilePropeties<T: Model> {
     pub classes_valid: Classes,
     #[prop_or_default]
     pub oninput: Callback<InputEvent>,
+    #[prop_or_default]
+    _phantom: PhantomData<T>,
 }
 
 #[function_component(File)]
-pub fn file<T: Model>(
+pub fn file<T: Model, F: FormLike<T> + 'static>(
     FilePropeties {
         form,
         field_name,
@@ -43,7 +48,8 @@ pub fn file<T: Model>(
         classes_valid,
         classes_invalid,
         oninput,
-    }: &FilePropeties<T>,
+        ..
+    }: &FilePropeties<T, F>,
 ) -> Html {
     let field = form.field(field_name);
     let classes = classes!(

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use strum::IntoStaticStr;
 use web_sys::HtmlInputElement;
 use web_sys::InputEvent;
@@ -9,6 +11,7 @@ use yew::prelude::*;
 use ybc;
 
 use crate::form::Form;
+use crate::form::FormLike;
 use crate::Model;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, IntoStaticStr)]
@@ -44,13 +47,13 @@ impl InputType {
 }
 
 #[derive(Properties, PartialEq, Clone)]
-pub struct InputProps<T: Model> {
+pub struct InputProps<T: Model, F: FormLike<T>> {
+    pub form: F,
     #[prop_or_default]
     pub autocomplete: bool,
     #[prop_or(InputType::Text)]
     pub input_type: InputType,
     pub field_name: AttrValue,
-    pub form: Form<T>,
     #[prop_or_default]
     pub placeholder: AttrValue,
     #[prop_or_default]
@@ -65,10 +68,12 @@ pub struct InputProps<T: Model> {
     pub classes_valid: Classes,
     #[prop_or_default]
     pub oninput: Callback<InputEvent>,
+    #[prop_or_default]
+    _phantom: PhantomData<T>,
 }
 
 #[function_component(Input)]
-pub fn input<T: Model>(
+pub fn input<T: Model, F: FormLike<T> + 'static>(
     InputProps {
         autocomplete,
         input_type,
@@ -80,7 +85,8 @@ pub fn input<T: Model>(
         classes_invalid,
         classes_valid,
         oninput,
-    }: &InputProps<T>,
+        ..
+    }: &InputProps<T, F>,
 ) -> Html {
     let field = form.field(field_name);
     let classes = classes!(

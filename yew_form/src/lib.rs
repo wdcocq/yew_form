@@ -3,6 +3,7 @@ pub mod form;
 pub mod form_field;
 pub mod form_state;
 pub mod model;
+pub mod new_form;
 
 pub use components::*;
 

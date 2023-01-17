@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use web_sys::HtmlSelectElement;
@@ -11,6 +12,7 @@ use yew::virtual_dom::VText;
 use ybc;
 
 use crate::form::Form;
+use crate::form::FormLike;
 use crate::Model;
 
 pub enum SelectMessage {
@@ -45,8 +47,8 @@ impl Into<Html> for Options {
 }
 
 #[derive(Properties, PartialEq, Clone)]
-pub struct SelectProps<T: Model> {
-    pub form: Form<T>,
+pub struct SelectProps<T: Model, F: FormLike<T> + 'static> {
+    pub form: F,
     pub field_name: AttrValue,
     pub children: ChildrenRenderer<Options>,
     #[prop_or_default]
@@ -63,10 +65,12 @@ pub struct SelectProps<T: Model> {
     pub classes_invalid: Classes,
     #[prop_or_default]
     pub onchange: Callback<Event>,
+    #[prop_or_default]
+    _phantom: PhantomData<T>,
 }
 
 #[function_component(Select)]
-pub fn select<T: Model>(
+pub fn select<T: Model, F: FormLike<T> + 'static>(
     SelectProps {
         form,
         field_name,
@@ -78,7 +82,8 @@ pub fn select<T: Model>(
         classes_invalid,
         children,
         onchange,
-    }: &SelectProps<T>,
+        ..
+    }: &SelectProps<T, F>,
 ) -> Html {
     let field = form.field(&field_name);
     let selected = &field.value;

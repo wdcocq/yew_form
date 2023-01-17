@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use web_sys::HtmlTextAreaElement;
 use web_sys::InputEvent;
 
@@ -6,6 +8,7 @@ use yew::html::IntoPropValue;
 use yew::prelude::*;
 
 use crate::form::Form;
+use crate::form::FormLike;
 use crate::Model;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -26,8 +29,8 @@ impl IntoPropValue<Option<AttrValue>> for &Wrap {
 }
 
 #[derive(Properties, PartialEq, Clone)]
-pub struct TextAreaProps<T: Model> {
-    pub form: Form<T>,
+pub struct TextAreaProps<T: Model, F: FormLike<T>> {
+    pub form: F,
     pub field_name: AttrValue,
     pub oninput: Callback<InputEvent>,
     #[prop_or_default]
@@ -52,10 +55,12 @@ pub struct TextAreaProps<T: Model> {
     pub autocomplete: bool,
     #[prop_or_default]
     pub autocorrect: bool,
+    #[prop_or_default]
+    _phantom: PhantomData<T>,
 }
 
 #[function_component(TextArea)]
-pub fn text_area<T: Model>(
+pub fn text_area<T: Model, F: FormLike<T> + 'static>(
     TextAreaProps {
         form,
         field_name,
@@ -71,7 +76,8 @@ pub fn text_area<T: Model>(
         spellcheck,
         autocomplete,
         autocorrect,
-    }: &TextAreaProps<T>,
+        ..
+    }: &TextAreaProps<T, F>,
 ) -> Html {
     let field = form.field(field_name);
     let classes = classes!(
